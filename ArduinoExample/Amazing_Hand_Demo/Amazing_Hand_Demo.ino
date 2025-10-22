@@ -18,8 +18,8 @@ float Step = 0.293; // 300°/1024
 
 void setup()
 {
+  Serial.begin(115200);
   Serial1.begin(1000000);
-  //Serial.begin(115200);
   sc.pSerial = &Serial1;
   delay(1000);
 }
