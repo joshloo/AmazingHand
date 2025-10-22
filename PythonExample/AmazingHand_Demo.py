@@ -402,19 +402,26 @@ def OpenHand_Linear_Duration(duration_seconds, mode="sigmoid"):
     
     # Time parameters
     total_duration = float(duration_seconds)  # seconds
-    time_step = 0.05  # update every 50ms for smooth motion
-    num_steps = int(total_duration / time_step)
+    time_step = 0.001  # target 1ms between commands for very smooth motion
     
-    print(f"Starting {mode} movement over {total_duration} seconds with {num_steps} steps")
+    print(f"Starting {mode} movement over {total_duration} seconds (updating every ~1ms)")
     
     # Use a moderate speed for smooth transitions
     speed = 5
     
     start_time = time.time()
+    last_progress_print = 0
     
-    for step in range(num_steps + 1):
-        # Calculate raw interpolation factor (0.0 to 1.0)
-        t_raw = step / num_steps
+    # Loop until we reach the target duration
+    while True:
+        elapsed = time.time() - start_time
+        
+        # Check if we've reached the target duration
+        if elapsed >= total_duration:
+            elapsed = total_duration  # Cap at exact duration
+            
+        # Calculate raw interpolation factor based on ACTUAL elapsed time (0.0 to 1.0)
+        t_raw = elapsed / total_duration
         
         # Apply interpolation mode
         if mode == "sigmoid":
@@ -454,16 +461,17 @@ def OpenHand_Linear_Duration(duration_seconds, mode="sigmoid"):
         Move_Ring(ring_angle1, ring_angle2, speed)
         Move_Thumb(thumb_angle1, thumb_angle2, speed)
         
-        # Progress indicator (show every 10 steps or at key milestones)
-        if step % 10 == 0 or step == num_steps:
-            elapsed = time.time() - start_time
-            print(f"  Progress: {int(t_raw * 100)}% | Elapsed: {elapsed:.2f}s | Interpolation: {t:.3f}")
+        # Progress indicator (show every 0.1 seconds)
+        if elapsed - last_progress_print >= 0.1 or elapsed >= total_duration:
+            print(f"  Progress: {int(t_raw * 100)}% | Elapsed: {elapsed:.3f}s | Interpolation: {t:.3f}")
+            last_progress_print = elapsed
         
-        # Wait for next step (compensate for execution time)
-        elapsed = time.time() - start_time
-        target_time = step * time_step
-        if elapsed < target_time:
-            time.sleep(target_time - elapsed)
+        # Break if we've completed the movement
+        if elapsed >= total_duration:
+            break
+        
+        # Small sleep to target ~1ms between updates (system will do its best)
+        time.sleep(time_step)
     
     actual_duration = time.time() - start_time
     print(f"Movement complete! Actual duration: {actual_duration:.3f} seconds")
